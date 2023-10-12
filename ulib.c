@@ -55,15 +55,34 @@ gets(char *buf, int max)
   int i, cc;
   char c;
 
-  for(i=0; i+1 < max; ){
+  for (i = 0; i + 1 < max - 1;)
+  {
     cc = read(0, &c, 1);
-    if(cc < 1)
+    if (cc < 1)
       break;
-    buf[i++] = c;
-    if(c == '\n' || c == '\r')
+    if (c == '\n' || c == '\r')
       break;
+ 
+    if (c == 2)
+      i--;
+    else
+    {
+      if (buf[i] == 0)
+      {
+        buf[i] = c;
+      }
+      else
+      {
+        for (int j = max - 1; j >= i; j--)
+        {
+          buf[j + 1] = buf[j];
+        }
+        buf[i] = c;
+      }
+      i++;
+    }
   }
-  buf[i] = '\0';
+  // buf[i] = '\0';
   return buf;
 }
 
