@@ -146,8 +146,9 @@ cgaputc(int c)
     crt[pos] = ' ' | 0x0700;
   }else if(c == 'B'){
     if(pos > 0) --pos;
-  } else
-    crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  } else{
+      crt[pos++] = (c&0xff) | 0x0700; 
+    } // black on white
 
   if(pos < 0 || pos > 25*80)
     panic("pos under/overflow");
@@ -225,8 +226,20 @@ consoleintr(int (*getc)(void))
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
-        consputc(c);
+        if(input.buf[input.e] == 0){
+          input.buf[input.e++ % INPUT_BUF] = c;
+          consputc(c);
+        }
+        else{
+          int i = input.e;
+          while(input.buf[i] != 0){
+            i+=1;
+          }
+          for(int j = i - 1 ; j > input.e;j--){
+            input.buf[(j+1) % INPUT_BUF] = input.buf[j % INPUT_BUF];
+          }
+          input.buf[input.e++ % INPUT_BUF] = c; 
+        }
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
           wakeup(&input.r);
