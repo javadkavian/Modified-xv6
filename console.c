@@ -143,6 +143,9 @@ cgaputc(int c)
     pos += 80 - pos%80;
   else if(c == BACKSPACE){
     if(pos > 0) --pos;
+    crt[pos] = ' ' | 0x0700;
+  }else if(c == 'B'){
+    if(pos > 0) --pos;
   } else
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
 
@@ -159,7 +162,7 @@ cgaputc(int c)
   outb(CRTPORT+1, pos>>8);
   outb(CRTPORT, 15);
   outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
+  
 }
 
 void
@@ -213,6 +216,12 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
+    case C('B'):
+      if(input.e > input.r){
+        input.e --;
+        consputc('B');
+      }
+      break;  
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
