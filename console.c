@@ -230,6 +230,11 @@ consoleintr(int (*getc)(void))
       break;  
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
+        int x = 128;
+        while(x > input.e){
+          input.buf[x] = input.buf[x-1];
+          x -=1;
+        }
         c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
         consputc(c);
