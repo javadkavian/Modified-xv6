@@ -166,6 +166,9 @@ cgaputc(int c)
     if (pos > 0)
       --pos;
   }
+  else if(c == 'F'){
+    ++pos;
+  }
   else
   {
     int i = 80 * 25;
@@ -254,7 +257,12 @@ void consoleintr(int (*getc)(void))
         }
       }
       break;
-    case 127:
+    case C('F'):
+      if(input.e < 128){
+        consputc('F');
+        input.buf[input.e++ % INPUT_BUF] = c;
+      }
+      break;  
     case 8:
       if (input.e - input.r < INPUT_BUF)
       {
