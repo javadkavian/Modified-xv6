@@ -173,7 +173,9 @@ cgaputc(int c)
     for(int j = 0 ; j < 25*80 ; j++){
       crt[j] = '\0';
     }
-    pos = 0;
+    pos = 2;
+    crt[0] = '$' | 0x0700;
+    crt[1] = ' ' | 0x0700;
   }
   else
   {
@@ -270,10 +272,8 @@ void consoleintr(int (*getc)(void))
       break;
     case C('L'):
       consputc('L');
-      input.buf[input.e++ % INPUT_BUF] = '\n';
-      input.w = input.e;
-      wakeup(&input.r);
-      break;    
+      input.e = input.w;
+      break;  
     case 8:
       if (input.e - input.r < INPUT_BUF)
       {

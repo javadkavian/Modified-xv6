@@ -66,7 +66,7 @@ gets(char *buf, int max)
     if (c == 2)
       i--;
     else if(c == 6)
-      i++;  
+      i++;    
     else if (c== 127 || c == 8)
     {
       if (i> 0)
