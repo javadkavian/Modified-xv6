@@ -169,6 +169,12 @@ cgaputc(int c)
   else if(c == 'F'){
     ++pos;
   }
+  else if(c == 'L'){
+    for(int j = 0 ; j < 25*80 ; j++){
+      crt[j] = '\0';
+    }
+    pos = 0;
+  }
   else
   {
     int i = 80 * 25;
@@ -260,9 +266,14 @@ void consoleintr(int (*getc)(void))
     case C('F'):
       if(input.e < 128){
         consputc('F');
-        input.buf[input.e++ % INPUT_BUF] = c;
       }
-      break;  
+      break;
+    case C('L'):
+      consputc('L');
+      input.buf[input.e++ % INPUT_BUF] = '\n';
+      input.w = input.e;
+      wakeup(&input.r);
+      break;    
     case 8:
       if (input.e - input.r < INPUT_BUF)
       {
