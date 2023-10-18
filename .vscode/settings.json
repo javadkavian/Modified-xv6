@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "types.h": "c",
+        "fcntl.h": "c",
+        "user.h": "c",
+        "stat.h": "c",
+        "file.h": "c"
+    }
+}
