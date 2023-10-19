@@ -24,7 +24,6 @@ static struct
   struct spinlock lock;
   int locking;
 } cons;
-
 static void
 printint(int xx, int base, int sign)
 {
@@ -51,7 +50,6 @@ printint(int xx, int base, int sign)
     consputc(buf[i]);
 }
 // PAGEBREAK: 50
-
 // Print to the console. only understands %d, %x, %p, %s.
 void cprintf(char *fmt, ...)
 {
@@ -130,7 +128,12 @@ void panic(char *s)
 #define BACKSPACE 0x100
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort *)P2V(0xb8000); // CGA memory
+int size_of_console = 0;
+static ushort hist[10][128];
+int prev_comand = -1;
+int last_comand = -1;
 
+int prev_size[10];
 static void
 cgaputc(int c)
 {
@@ -143,11 +146,17 @@ cgaputc(int c)
   pos |= inb(CRTPORT + 1);
 
   if (c == '\n')
+  {
     pos += 80 - pos % 80;
+    size_of_console = 0;
+  }
   else if (c == BACKSPACE)
   {
-
-    if (pos > 0)
+    if (size_of_console > 0)
+    {
+      size_of_console--;
+    }
+    if (pos % 80 > 2)
     {
       --pos;
       crt[pos] = ' ' | 0x0700;
@@ -161,21 +170,56 @@ cgaputc(int c)
       crt[pos] = ' ' | 0x0700;
     }
   }
-  else if (c == 'B')
+  else if (c == 2)
   {
     if (pos > 0)
       --pos;
   }
-  else if(c == 'F'){
-    ++pos;
-  }
-  else if(c == 'L'){
-    for(int j = 0 ; j < 25*80 ; j++){
-      crt[j] = '\0';
+  else if (c == 6)
+  {
+    if (pos % 80 < size_of_console)
+    {
+      pos++;
     }
+  }
+  else if (c == 227)
+  {
+    while (pos % 80 != 1)
+    {
+      crt[pos] = ' ' | 0x0700;
+      pos--;
+    }
+    pos++;
+    for (int i = 0; i < prev_size[prev_comand + 1]; i++)
+    {
+      crt[pos] = hist[prev_comand + 1][i];
+      pos++;
+    }
+    size_of_console = prev_size[prev_comand];
+  }
+  else if (c == 12)
+  {
+    for (int i = 0; i < pos; i++)
+    {
+      crt[i] = ' ' | 0x0700;
+    }
+    crt[0] = ('$' & 0xff) | 0x0700;
     pos = 2;
-    crt[0] = '$' | 0x0700;
-    crt[1] = ' ' | 0x0700;
+  }
+  else if (c == 226)
+  {
+    while (pos % 80 != 1)
+    {
+      crt[pos] = ' ' | 0x0700;
+      pos--;
+    }
+    pos++;
+    for (int i = 0; i < prev_size[prev_comand]; i++)
+    {
+      crt[pos] = hist[prev_comand][i];
+      pos++;
+    }
+    size_of_console = prev_size[prev_comand];
   }
   else
   {
@@ -185,6 +229,7 @@ cgaputc(int c)
       crt[i] = crt[i - 1];
       i -= 1;
     }
+    size_of_console++;
     crt[pos++] = (c & 0xff) | 0x0700;
   } // black on white
 
@@ -223,7 +268,7 @@ void consputc(int c)
     uartputc(c);
   cgaputc(c);
 }
-
+short arrow_flag = 0;
 #define INPUT_BUF 128
 struct
 {
@@ -232,8 +277,23 @@ struct
   uint w; // Write index
   uint e; // Edit index
 } input;
+void shift_histor()
+{
+  for (int i = 0; i < 9; i++)
+  {
+    prev_size[i] = prev_size[i + 1];
+    for (int j = 0; j < 128; j++)
+    {
+      hist[i][j] = hist[i + 1][j];
+    }
+  }
+  for (int i = 0; i < 128; i++)
+  {
+    hist[9][i] = (' ' | 0x0700);
+  }
+}
 #define C(x) ((x) - '@') // Control-x
-
+int comand_size = 0;
 void consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
@@ -258,23 +318,48 @@ void consoleintr(int (*getc)(void))
     case C('B'):
       if (input.e > input.r)
       {
-        consputc('B');
+        consputc(C('B'));
         if (input.e - input.r < INPUT_BUF)
         {
           input.buf[input.e++ % INPUT_BUF] = c;
         }
       }
       break;
-    case C('F'):
-      if(input.e < 128){
-        consputc('F');
+    case C('L'):
+      consputc(C('L'));
+      break;
+    case (C('F')):
+
+      consputc(C('F'));
+      if (input.e - input.r < INPUT_BUF)
+      {
+        input.buf[input.e++ % INPUT_BUF] = c;
+      }
+
+      break;
+    case (226):
+      if (input.e - input.r < INPUT_BUF)
+      {
+        arrow_flag = 1;
+        input.buf[input.e++ % INPUT_BUF] = 27;
+        if (prev_comand != -1)
+        {
+          cgaputc(c);
+          prev_comand--;
+        }
       }
       break;
-    case C('L'):
-      consputc('L');
-      input.e = input.w;
-      break;  
+    case (227):
+      input.buf[input.e++ % INPUT_BUF] = 33;
+      if (prev_comand != last_comand)
+      {
+        prev_comand++;
+        cgaputc(c);
+      }
+      break;
+    case 127:
     case 8:
+      comand_size--;
       if (input.e - input.r < INPUT_BUF)
       {
         cgaputc(BACKSPACE);
@@ -286,10 +371,95 @@ void consoleintr(int (*getc)(void))
       {
         c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
-        consputc(c);
-        if (c == '\n' || c == C('D') || input.e == input.r + INPUT_BUF)
+        if (c != '\n')
         {
+          comand_size++;
+        }
+        consputc(c);
+        if (arrow_flag == 1 && c == '\n')
+        {
+
+          if (last_comand != 9)
+          {
+            last_comand++;
+          }
+          else
+          {
+            shift_histor();
+          }
+          int j = 0;
+          for (int i = 0; i < prev_size[prev_comand + 1]; i++)
+          {
+
+            hist[last_comand][i] = hist[prev_comand + 1][j];
+            j++;
+          }
+          prev_size[last_comand] = prev_size[prev_comand + 1];
+
+          prev_comand = last_comand;
+          arrow_flag = 0;
           input.w = input.e;
+          wakeup(&input.r);
+        }
+        else if (c == '\n' || c == C('D') || input.e == input.r + INPUT_BUF)
+        {
+          if (prev_comand != 9)
+          {
+            prev_comand++;
+          }
+          if (last_comand != 9)
+          {
+            last_comand++;
+          }
+          else
+          {
+            shift_histor();
+          }
+          int j = input.r % INPUT_BUF;
+          for (int i = 0; input.buf[j]!='\n'; )
+          {
+            if (input.buf[j + 1] != 127 && input.buf[j + 1] != 8)
+            {
+              if (input.buf[j] == C('B'))
+              {
+                if (i != 0)
+                {
+                  j++;
+                  i--;
+                }
+              }
+              else if (input.buf[j] == C('F'))
+              {
+                if (hist[last_comand][i] != (' ' | 0x0700))
+                {
+                  i++;
+                  j++;
+                }
+              }
+              else if (input.buf[j] == C('L'))
+              {
+              }
+              else
+              {
+                for (int x = 128; x >= i; x--)
+                {
+                  hist[last_comand][x + 1] = hist[last_comand][x];
+                }
+                hist[last_comand][i] = (input.buf[j] & 0xff) | 0x0700;
+                j++;
+                i++;
+              }
+            }
+            else
+            {
+              j += 2;
+              i--;
+            }
+          }
+          prev_size[last_comand] = comand_size;
+          comand_size = 0;
+          input.w = input.e;
+          prev_comand = last_comand;
           wakeup(&input.r);
         }
       }

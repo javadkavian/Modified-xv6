@@ -131,11 +131,11 @@ runcmd(struct cmd *cmd)
 }
 
 int
-getcmd(char *buf, int nbuf)
+getcmd(char *buf, int nbuf , My * holder)
 {
   printf(2, "$ ");
   memset(buf, 0, nbuf);
-  gets(buf, nbuf);
+  gets(buf, nbuf,holder);
   if(buf[0] == 0) // EOF
     return -1;
   return 0;
@@ -154,9 +154,11 @@ main(void)
       break;
     }
   }
-
+  My holder;
+  holder.last_command=-1;
+  holder.current_command=-1;
   // Read and run input commands.
-  while(getcmd(buf, sizeof(buf)) >= 0){
+  while(getcmd(buf, sizeof(buf),&holder) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
