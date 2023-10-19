@@ -3,18 +3,18 @@
 #include "user.h"
 #include "fcntl.h"
 
-int compare_char(char a, char b){
-  int first, second;
+int greater_than(char a, char b){
+  int pure_ascii, pure_ascii_2;
   if('a' <= a && a <= 'z')
-    first = a - 'a';
+    pure_ascii = a - 'a';
   else
-    first = a - 'A';
+    pure_ascii = a - 'A';
   if('a' <= b && b <= 'z')
-    second = b - 'a';
+    pure_ascii_2 = b - 'a';
   else
-    second = b - 'A';
+    pure_ascii_2 = b - 'A';
 
-  if(first >= second)
+  if(pure_ascii >= pure_ascii_2)
     return 0;
   return 1;
 }
@@ -24,7 +24,7 @@ int
 main(int argc, char *argv[])
 {
   if(argc != 3){
-    printf(2, "Error: number of args...\n");
+    printf(2, "Not enough arguments\n");
     exit();
   }
 
@@ -32,7 +32,7 @@ main(int argc, char *argv[])
 
   int i;
   for(i = 0; argv[1][i] != '\0' && argv[2][i] != '\0'; i++)
-    ans[i] = '0' + compare_char(argv[1][i], argv[2][i]);
+    ans[i] = '0' + greater_than(argv[1][i], argv[2][i]);
 
   int j = i;
   if(argv[1][i] == '\0' && argv[2][i] != '\0')
