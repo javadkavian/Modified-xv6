@@ -367,11 +367,11 @@ void consoleintr(int (*getc)(void))
       }
       break;
     default:
-      if (c != 0 && input.e - input.r < INPUT_BUF)
+      if (c != 0 )
       {
         c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
-        if (c != '\n')
+        if (c != '\n' && c != 226 && c != 227)
         {
           comand_size++;
         }
@@ -391,10 +391,61 @@ void consoleintr(int (*getc)(void))
           for (int i = 0; i < prev_size[prev_comand + 1]; i++)
           {
 
-            hist[last_comand][i] = hist[prev_comand + 1][j];
+            hist[last_comand][i] =hist[prev_comand + 1][j];
             j++;
           }
+          int a = j;
+          j = input.w % INPUT_BUF;
+          j++;
           prev_size[last_comand] = prev_size[prev_comand + 1];
+          for (int i = a; input.buf[j] != '\n';)
+          {
+
+            if (input.buf[j + 1] != 127 && input.buf[j + 1] != 8)
+            {
+              consputc(input.buf[j]);
+              if (input.buf[j] == 226)
+              {
+                j++;
+              }
+              else if (input.buf[j] == C('B'))
+              {
+                if (i != 0)
+                {
+                  j++;
+                  i--;
+                }
+              }
+              else if (input.buf[j] == C('F'))
+              {
+                if (hist[last_comand][i] != (' ' | 0x0700))
+                {
+                  i++;
+                  j++;
+                }
+              }
+              else if (input.buf[j] == C('L'))
+              {
+              }
+              else
+              {
+                prev_size[last_comand]++;
+                for (int x = 128; x >= i; x--)
+                {
+                  hist[last_comand][x + 1] = hist[last_comand][x];
+                }
+                hist[last_comand][i] = (input.buf[j] & 0xff) | 0x0700;
+                j++;
+                i++;
+              }
+            }
+            else
+            {
+              j += 2;
+              i--;
+            }
+          }
+          
 
           prev_comand = last_comand;
           arrow_flag = 0;
@@ -416,8 +467,9 @@ void consoleintr(int (*getc)(void))
             shift_histor();
           }
           int j = input.r % INPUT_BUF;
-          for (int i = 0; input.buf[j]!='\n'; )
+          for (int i = 0; input.buf[j] != '\n';)
           {
+
             if (input.buf[j + 1] != 127 && input.buf[j + 1] != 8)
             {
               if (input.buf[j] == C('B'))
